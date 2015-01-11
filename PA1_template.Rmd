@@ -1,18 +1,21 @@
 ---
 title: 'Reproducible Research: Peer Assessment 1'
 output:
-  word_document: default
   html_document:
     keep_md: yes
+  pdf_document: default
+  word_document: default
 ---
 
 
 ## Loading and preprocessing the data
 ```{r}
-data<-read.csv("activity.csv")
-summary(data)
+originData<-read.csv("activity.csv")
+summary(originData)
 
 ```
+
+
 
 ## What is mean total number of steps taken per day?
 
@@ -21,40 +24,112 @@ For this part of the assignment, you can ignore the missing values in the datase
 1. Make a histogram of the total number of steps taken each day   
 
 ```{r}
-Nadata<-data[complete.cases(data),]# Remove row with NA
-summary(Nadata)
+# Remove row with NA
+data<-originData[complete.cases(originData),]
+summary(data)
+#change date character to date format
+data$date<-as.Date(data$date,"%Y-%m-%d")
+
+#Make histogram
 library(ggplot2)
-g<-ggplot(Nadata,aes(date,steps))
-g+geom_histogram(stat="identity")
+library(scales)
+g<-ggplot(data,aes(date,steps))
+g+geom_histogram(stat="identity")+
+        scale_x_date( labels=date_format("%b%e"),breaks = date_breaks("week"))+
+        labs(x="",y="Total steps per day")
 ```
 
 2. Calculate and report the mean and median total number of steps taken per day
 
-```{r}
-library(data.table)
-TableNadata<-data.table(Nadata)
-StepPerDate<-TableNadata[,.(steps=sum(steps)),by=date]
-summary(StepPerDate$steps)
 
+
+```{r}
+library(plyr)
+StepPerDay<-ddply(data,c("date"),summarise,steps=sum(steps))
+summary(StepPerDay)
 ```
+
+
 
 
 ## What is the average daily activity pattern?
 
 ```{r}
 
-StepPerInt<-TableNadata[,.(steps=mean(steps)),by=interval]
+StepPerInt<-ddply(data,c("interval"),summarise,steps=mean(steps))
+
 plot(StepPerInt$interval,StepPerInt$steps)
 ```
 
 The interval across the day, which have maximum average of number of step
 ```{r}
-StepPerInt[steps==max(StepPerInt$steps),]
-
+StepPerInt[StepPerInt$steps==max(StepPerInt$steps),]
+#which.max(
 ```
 
 ## Imputing missing values
+1. I will impute the NA by average value of that interval
 
+```{r}
+ImpData<-originData # create a new imputed data frame
+i<-1
 
+while (i<=nrow(ImpData)){
+        if (is.na(ImpData$steps[i])){
+                j<-ImpData$interval[i]
+                ImpData[i,1]<-StepPerInt[StepPerInt$interval==j,]$steps
+        }
+        i<-i+1
+}
+
+```
+
+2. Make histogram of mean daily steps
+
+```{r}
+#change format of character into date
+ImpData$date<-as.Date(ImpData$date,format="%Y-%m-%d")
+
+library(ggplot2)
+library(scales)
+his<-ggplot(ImpData,aes(date,steps))
+his+geom_histogram(stat="identity")+
+        scale_x_date( labels=date_format("%b%e"),breaks = date_breaks("week"))+
+        labs(x="",y="Total steps per day")
+```
+
+3. Calculate the mean and median of total steps per day
+```{r}
+# Make table data
+StepPerDay1<-ddply(ImpData,c("date"),summarise,steps=sum(steps))
+
+#Caculate mean and median
+summary(StepPerDay1)
+```
+
+We can see that Mean of Imputed Data was not changed compare with Mean of steps
+that remove NA, however the Median changed to equal Mean.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+1.Format the day to become weedays and weekends
+
+```{r}
+
+#Change date format into day
+ImpData$date<-format(ImpData$date,"%a")
+#Change date to weekday and weekend
+for (i in 1:nrow(ImpData)){
+        ifelse(ImpData$date[i]=="Sat" | ImpData$date[i]=="Sun",
+                ImpData[i,2]<-"Weekend",
+               ImpData[i,2]<-"Weekday" )}
+
+str(ImpData)
+```
+
+2. Make graph to see steps by interval in weekday and weekend
+
+```{r}
+library(ggplot2)
+we<-ggplot(ImpData,aes(interval,steps))
+we+geom_line()+facet_wrap(~date)
+```
