@@ -21,10 +21,10 @@ summary(originData)
 
 For this part of the assignment, you can ignore the missing values in the dataset.
 
-1. Make a histogram of the total number of steps taken each day   
+1. Make a histogram of the total number of steps taken per day   
 
 ```{r}
-# Remove row with NA
+# Remove row with NA in the dataset
 data<-originData[complete.cases(originData),]
 summary(data)
 #change date character to date format
@@ -42,15 +42,13 @@ g+geom_histogram(stat="identity")+
 2. Calculate and report the mean and median total number of steps taken per day
 
 
-
 ```{r}
 library(plyr)
 StepPerDay<-ddply(data,c("date"),summarise,steps=sum(steps))
 summary(StepPerDay)
 ```
-
-
-
+The mean total number of step per day was 10766 (steps)
+the median was 10765 steps.
 
 ## What is the average daily activity pattern?
 
@@ -61,11 +59,12 @@ StepPerInt<-ddply(data,c("interval"),summarise,steps=mean(steps))
 plot(StepPerInt$interval,StepPerInt$steps)
 ```
 
-The interval across the day, which have maximum average of number of step
+The interval has maximum average of number of steps
 ```{r}
 StepPerInt[StepPerInt$steps==max(StepPerInt$steps),]
-#which.max(
 ```
+
+835 is the interval time that the average of number of steps is maximum (~206 steps)
 
 ## Imputing missing values
 1. I will impute the NA by average value of that interval
@@ -81,8 +80,10 @@ while (i<=nrow(ImpData)){
         }
         i<-i+1
 }
-
+#View summary of imputed data
+summary(ImpData)
 ```
+There was no NA now.
 
 2. Make histogram of mean daily steps
 
@@ -90,6 +91,7 @@ while (i<=nrow(ImpData)){
 #change format of character into date
 ImpData$date<-as.Date(ImpData$date,format="%Y-%m-%d")
 
+#Make histogram by using ggplot2 and scales packages
 library(ggplot2)
 library(scales)
 his<-ggplot(ImpData,aes(date,steps))
@@ -107,16 +109,18 @@ StepPerDay1<-ddply(ImpData,c("date"),summarise,steps=sum(steps))
 summary(StepPerDay1)
 ```
 
-We can see that Mean of Imputed Data was not changed compare with Mean of steps
-that remove NA, however the Median changed to equal Mean.
+We can now see that mean of total steps per day was not changed. However, median
+of total steps per day in imputed data has changed toward the mean value.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
 1.Format the day to become weedays and weekends
 
 ```{r}
-
 #Change date format into day
-ImpData$date<-format(ImpData$date,"%a")
+ImpData$date<-format(ImpData$date,"%a",trim=T)
+table(ImpData$date) #View number of date now
+
 #Change date to weekday and weekend
 for (i in 1:nrow(ImpData)){
         ifelse(ImpData$date[i]=="Sat" | ImpData$date[i]=="Sun",
@@ -131,5 +135,13 @@ str(ImpData)
 ```{r}
 library(ggplot2)
 we<-ggplot(ImpData,aes(interval,steps))
-we+geom_line()+facet_wrap(~date)
+we+geom_line()+facet_grid(date~.)+
+        labs(x="Time",y="Average total of steps")+
+        theme(strip.text.y=element_text(size=15,color="red"))+
+        theme(axis.title.x=element_text(size=15))+
+        theme(axis.title.y=element_text(size=15))
 ```
+
+We can see that in the weekday, the high activity start earlier from 5 AM, while
+for the weekend, the acitivity start late at around 8 AM.
+after 8 AM.
